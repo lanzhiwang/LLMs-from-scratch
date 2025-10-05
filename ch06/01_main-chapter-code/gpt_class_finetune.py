@@ -75,9 +75,7 @@ class SpamDataset(Dataset):
         self.data = pd.read_csv(csv_file)
 
         # Pre-tokenize texts
-        self.encoded_texts = [
-            tokenizer.encode(text) for text in self.data["Text"]
-        ]
+        self.encoded_texts = [tokenizer.encode(text) for text in self.data["Text"]]
 
         if max_length is None:
             self.max_length = self._longest_encoded_length()
@@ -85,8 +83,7 @@ class SpamDataset(Dataset):
             self.max_length = max_length
             # Truncate sequences if they are longer than max_length
             self.encoded_texts = [
-                encoded_text[:self.max_length]
-                for encoded_text in self.encoded_texts
+                encoded_text[: self.max_length] for encoded_text in self.encoded_texts
             ]
 
         # Pad sequences to the longest sequence
@@ -100,7 +97,7 @@ class SpamDataset(Dataset):
         label = self.data.iloc[index]["Label"]
         return (
             torch.tensor(encoded, dtype=torch.long),
-            torch.tensor(label, dtype=torch.long)
+            torch.tensor(label, dtype=torch.long),
         )
 
     def __len__(self):
@@ -149,7 +146,7 @@ def calc_loss_batch(input_batch, target_batch, model, device):
 
 
 def calc_loss_loader(data_loader, model, device, num_batches=None):
-    total_loss = 0.
+    total_loss = 0.0
     if len(data_loader) == 0:
         return float("nan")
     elif num_batches is None:
@@ -168,14 +165,17 @@ def calc_loss_loader(data_loader, model, device, num_batches=None):
 def evaluate_model(model, train_loader, val_loader, device, eval_iter):
     model.eval()
     with torch.no_grad():
-        train_loss = calc_loss_loader(train_loader, model, device, num_batches=eval_iter)
+        train_loss = calc_loss_loader(
+            train_loader, model, device, num_batches=eval_iter
+        )
         val_loss = calc_loss_loader(val_loader, model, device, num_batches=eval_iter)
     model.train()
     return train_loss, val_loss
 
 
-def train_classifier_simple(model, train_loader, val_loader, optimizer, device, num_epochs,
-                            eval_freq, eval_iter):
+def train_classifier_simple(
+    model, train_loader, val_loader, optimizer, device, num_epochs, eval_freq, eval_iter
+):
     # Initialize lists to track losses and tokens seen
     train_losses, val_losses, train_accs, val_accs = [], [], [], []
     examples_seen, global_step = 0, -1
@@ -189,21 +189,30 @@ def train_classifier_simple(model, train_loader, val_loader, optimizer, device, 
             loss = calc_loss_batch(input_batch, target_batch, model, device)
             loss.backward()  # Calculate loss gradients
             optimizer.step()  # Update model weights using loss gradients
-            examples_seen += input_batch.shape[0]  # New: track examples instead of tokens
+            examples_seen += input_batch.shape[
+                0
+            ]  # New: track examples instead of tokens
             global_step += 1
 
             # Optional evaluation step
             if global_step % eval_freq == 0:
                 train_loss, val_loss = evaluate_model(
-                    model, train_loader, val_loader, device, eval_iter)
+                    model, train_loader, val_loader, device, eval_iter
+                )
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
-                print(f"Ep {epoch+1} (Step {global_step:06d}): "
-                      f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                print(
+                    f"Ep {epoch+1} (Step {global_step:06d}): "
+                    f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}"
+                )
 
         # Calculate accuracy after each epoch
-        train_accuracy = calc_accuracy_loader(train_loader, model, device, num_batches=eval_iter)
-        val_accuracy = calc_accuracy_loader(val_loader, model, device, num_batches=eval_iter)
+        train_accuracy = calc_accuracy_loader(
+            train_loader, model, device, num_batches=eval_iter
+        )
+        val_accuracy = calc_accuracy_loader(
+            val_loader, model, device, num_batches=eval_iter
+        )
         print(f"Training accuracy: {train_accuracy*100:.2f}% | ", end="")
         print(f"Validation accuracy: {val_accuracy*100:.2f}%")
         train_accs.append(train_accuracy)
@@ -243,10 +252,13 @@ if __name__ == "__main__":
         "--test_mode",
         default=False,
         action="store_true",
-        help=("This flag runs the model in test mode for internal testing purposes. "
-              "Otherwise, it runs the model as it is used in the chapter (recommended).")
+        help=(
+            "This flag runs the model in test mode for internal testing purposes. "
+            "Otherwise, it runs the model as it is used in the chapter (recommended)."
+        ),
     )
     args = parser.parse_args()
+    print(f"args: {args}")
 
     ########################################
     # Download and prepare dataset
@@ -256,6 +268,7 @@ if __name__ == "__main__":
     zip_path = "sms_spam_collection.zip"
     extracted_path = "sms_spam_collection"
     data_file_path = Path(extracted_path) / "SMSSpamCollection.tsv"
+    print(f"data_file_path: {data_file_path}")
 
     try:
         download_and_unzip_spam_data(url, zip_path, extracted_path, data_file_path)
@@ -279,21 +292,17 @@ if __name__ == "__main__":
     tokenizer = tiktoken.get_encoding("gpt2")
 
     train_dataset = SpamDataset(
-        csv_file="train.csv",
-        max_length=None,
-        tokenizer=tokenizer
+        csv_file="train.csv", max_length=None, tokenizer=tokenizer
     )
 
     val_dataset = SpamDataset(
         csv_file="validation.csv",
         max_length=train_dataset.max_length,
-        tokenizer=tokenizer
+        tokenizer=tokenizer,
     )
 
     test_dataset = SpamDataset(
-        csv_file="test.csv",
-        max_length=train_dataset.max_length,
-        tokenizer=tokenizer
+        csv_file="test.csv", max_length=train_dataset.max_length, tokenizer=tokenizer
     )
 
     num_workers = 0
@@ -336,7 +345,7 @@ if __name__ == "__main__":
             "qkv_bias": False,
             "emb_dim": 12,
             "n_layers": 1,
-            "n_heads": 2
+            "n_heads": 2,
         }
         model = GPTModel(BASE_CONFIG)
         model.eval()
@@ -348,10 +357,10 @@ if __name__ == "__main__":
         INPUT_PROMPT = "Every effort moves"
 
         BASE_CONFIG = {
-            "vocab_size": 50257,     # Vocabulary size
+            "vocab_size": 50257,  # Vocabulary size
             "context_length": 1024,  # Context length
-            "drop_rate": 0.0,        # Dropout rate
-            "qkv_bias": True         # Query-key-value bias
+            "drop_rate": 0.0,  # Dropout rate
+            "qkv_bias": True,  # Query-key-value bias
         }
 
         model_configs = {
@@ -370,7 +379,9 @@ if __name__ == "__main__":
         )
 
         model_size = CHOOSE_MODEL.split(" ")[-1].lstrip("(").rstrip(")")
-        settings, params = download_and_load_gpt2(model_size=model_size, models_dir="gpt2")
+        settings, params = download_and_load_gpt2(
+            model_size=model_size, models_dir="gpt2"
+        )
 
         model = GPTModel(BASE_CONFIG)
         load_weights_into_gpt(model, params)
@@ -386,7 +397,13 @@ if __name__ == "__main__":
     torch.manual_seed(123)
 
     num_classes = 2
-    model.out_head = torch.nn.Linear(in_features=BASE_CONFIG["emb_dim"], out_features=num_classes)
+
+    print(f"model.out_head: {model.out_head}")
+    model.out_head = torch.nn.Linear(
+        in_features=BASE_CONFIG["emb_dim"], out_features=num_classes
+    )
+    print(f"model.out_head: {model.out_head}")
+
     model.to(device)
 
     for param in model.trf_blocks[-1].parameters():
@@ -405,9 +422,17 @@ if __name__ == "__main__":
     optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5, weight_decay=0.1)
 
     num_epochs = 5
-    train_losses, val_losses, train_accs, val_accs, examples_seen = train_classifier_simple(
-        model, train_loader, val_loader, optimizer, device,
-        num_epochs=num_epochs, eval_freq=50, eval_iter=5,
+    train_losses, val_losses, train_accs, val_accs, examples_seen = (
+        train_classifier_simple(
+            model,
+            train_loader,
+            val_loader,
+            optimizer,
+            device,
+            num_epochs=num_epochs,
+            eval_freq=50,
+            eval_iter=5,
+        )
     )
 
     end_time = time.time()
@@ -426,4 +451,32 @@ if __name__ == "__main__":
     # accuracy plot
     epochs_tensor = torch.linspace(0, num_epochs, len(train_accs))
     examples_seen_tensor = torch.linspace(0, examples_seen, len(train_accs))
-    plot_values(epochs_tensor, examples_seen_tensor, train_accs, val_accs, label="accuracy")
+    plot_values(
+        epochs_tensor, examples_seen_tensor, train_accs, val_accs, label="accuracy"
+    )
+
+"""
+$ python gpt_class_finetune.py
+2025-10-05 08:30:48.742748: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+
+args: Namespace(test_mode=False)
+data_file_path: sms_spam_collection/SMSSpamCollection.tsv
+File downloaded and saved as sms_spam_collection/SMSSpamCollection.tsv
+
+checkpoint: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████| 77.0/77.0 [00:00<00:00, 226kiB/s]
+encoder.json: 100%|███████████████████████████████████████████████████████████████████████████████████████████████| 1.04M/1.04M [00:01<00:00, 590kiB/s]
+hparams.json: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 90.0/90.0 [00:00<00:00, 330kiB/s]
+model.ckpt.data-00000-of-00001: 100%|██████████████████████████████████████████████████████████████████████████████| 498M/498M [00:53<00:00, 9.36MiB/s]
+model.ckpt.index: 100%|██████████████████████████████████████████████████████████████████████████████████████████| 5.21k/5.21k [00:00<00:00, 12.9MiB/s]
+model.ckpt.meta: 100%|██████████████████████████████████████████████████████████████████████████████████████████████| 471k/471k [00:01<00:00, 399kiB/s]
+vocab.bpe: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████| 456k/456k [00:01<00:00, 389kiB/s]
+
+2025-10-05 08:32:08.279822: W external/local_xla/xla/tsl/framework/cpu_allocator_impl.cc:84] Allocation of 154389504 exceeds 10% of free system memory.
+
+model.out_head: Linear(in_features=768, out_features=50257, bias=False)
+model.out_head: Linear(in_features=768, out_features=2, bias=True)
+
+Ep 1 (Step 000000): Train loss 2.153, Val loss 2.392
+
+"""

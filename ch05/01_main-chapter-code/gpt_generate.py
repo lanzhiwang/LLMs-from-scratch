@@ -237,32 +237,56 @@ def generate(
     model, idx, max_new_tokens, context_size, temperature=0.0, top_k=None, eos_id=None
 ):
 
+    print(f"generate idx: {idx.shape}")
+    print(f"generate max_new_tokens: {max_new_tokens}")
+    print(f"generate context_size: {context_size}")
+    print(f"generate temperature: {temperature}")
+    print(f"generate top_k: {top_k}")
+    print(f"generate eos_id: {eos_id}")
+
     # For-loop is the same as before: Get logits, and only focus on last time step
-    for _ in range(max_new_tokens):
+    for i in range(max_new_tokens):
+        print(f"\ngenerate i: {i}")
+        print(f"generate idx: {idx.shape}")
+
         idx_cond = idx[:, -context_size:]
+        print(f"generate idx_cond: {idx_cond.shape}")
+
         with torch.no_grad():
             logits = model(idx_cond)
+        print(f"generate logits1: {logits.shape}")
+
         logits = logits[:, -1, :]
+        print(f"generate logits2: {logits.shape}")
 
         # New: Filter logits with top_k sampling
         if top_k is not None:
             # Keep only top_k values
             top_logits, _ = torch.topk(logits, top_k)
+            print(f"generate top_logits: {top_logits.shape}")
+
             min_val = top_logits[:, -1]
+            print(f"generate min_val: {min_val}")
+
             logits = torch.where(
                 logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits
             )
+            print(f"generate logits3: {logits.shape}")
 
         # New: Apply temperature scaling
         if temperature > 0.0:
             logits = logits / temperature
+            print(f"generate logits4: {logits.shape}")
 
             # New (not in book): numerical stability tip to get equivalent results on mps device
             # subtract rowwise max before softmax
             logits = logits - logits.max(dim=-1, keepdim=True).values
+            print(f"generate logits5: {logits.max(dim=-1, keepdim=True).values}")
+            print(f"generate logits6: {logits.shape}")
 
             # Apply softmax to get probabilities
             probs = torch.softmax(logits, dim=-1)  # (batch_size, context_len)
+            print(f"generate probs: {probs.shape}")
 
             # Sample from the distribution
             idx_next = torch.multinomial(probs, num_samples=1)  # (batch_size, 1)
@@ -270,6 +294,8 @@ def generate(
         # Otherwise same as before: get idx of the vocab entry with the highest logits value
         else:
             idx_next = torch.argmax(logits, dim=-1, keepdim=True)  # (batch_size, 1)
+
+        print(f"generate idx_next: {idx_next}")
 
         if (
             idx_next == eos_id
@@ -352,3 +378,382 @@ if __name__ == "__main__":
     BASE_CONFIG.update(model_configs[CHOOSE_MODEL])
 
     main(BASE_CONFIG, INPUT_PROMPT, model_size, DEVICE)
+
+"""
+$ python gpt_generate.py
+2025-10-05 07:34:06.612574: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+
+PyTorch: 2.8.0+cu128
+Device: cpu
+
+checkpoint: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 77.0/77.0 [00:00<00:00, 219kiB/s]
+encoder.json: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1.04M/1.04M [00:01<00:00, 661kiB/s]
+hparams.json: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 90.0/90.0 [00:00<00:00, 276kiB/s]
+model.ckpt.data-00000-of-00001: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 498M/498M [00:56<00:00, 8.89MiB/s]
+model.ckpt.index: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5.21k/5.21k [00:00<00:00, 14.9MiB/s]
+model.ckpt.meta: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 471k/471k [00:00<00:00, 481kiB/s]
+vocab.bpe: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 456k/456k [00:00<00:00, 466kiB/s]
+
+2025-10-05 07:35:19.152399: W external/local_xla/xla/tsl/framework/cpu_allocator_impl.cc:84] Allocation of 154389504 exceeds 10% of free system memory.
+
+generate idx: torch.Size([1, 4])
+generate max_new_tokens: 25
+generate context_size: 1024
+generate temperature: 1.0
+generate top_k: 50
+generate eos_id: None
+
+generate i: 0
+generate idx: torch.Size([1, 4])
+generate idx_cond: torch.Size([1, 4])
+generate logits1: torch.Size([1, 4, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-136.2895])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[3812]])
+
+generate i: 1
+generate idx: torch.Size([1, 5])
+generate idx_cond: torch.Size([1, 5])
+generate logits1: torch.Size([1, 5, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-87.7108])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[4917]])
+
+generate i: 2
+generate idx: torch.Size([1, 6])
+generate idx_cond: torch.Size([1, 6])
+generate logits1: torch.Size([1, 6, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-88.0116])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[281]])
+
+generate i: 3
+generate idx: torch.Size([1, 7])
+generate idx_cond: torch.Size([1, 7])
+generate logits1: torch.Size([1, 7, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-98.2421])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[7306]])
+
+generate i: 4
+generate idx: torch.Size([1, 8])
+generate idx_cond: torch.Size([1, 8])
+generate logits1: torch.Size([1, 8, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-107.3792])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[1204]])
+
+generate i: 5
+generate idx: torch.Size([1, 9])
+generate idx_cond: torch.Size([1, 9])
+generate logits1: torch.Size([1, 9, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-105.1868])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[13]])
+
+generate i: 6
+generate idx: torch.Size([1, 10])
+generate idx_cond: torch.Size([1, 10])
+generate logits1: torch.Size([1, 10, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-157.9654])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[921]])
+
+generate i: 7
+generate idx: torch.Size([1, 11])
+generate idx_cond: torch.Size([1, 11])
+generate logits1: torch.Size([1, 11, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-154.1304])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[836]])
+
+generate i: 8
+generate idx: torch.Size([1, 12])
+generate idx_cond: torch.Size([1, 12])
+generate logits1: torch.Size([1, 12, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-262.2390])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[470]])
+
+generate i: 9
+generate idx: torch.Size([1, 13])
+generate idx_cond: torch.Size([1, 13])
+generate logits1: torch.Size([1, 13, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-152.5251])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[423]])
+
+generate i: 10
+generate idx: torch.Size([1, 14])
+generate idx_cond: torch.Size([1, 14])
+generate logits1: torch.Size([1, 14, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([13.5658])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[284]])
+
+generate i: 11
+generate idx: torch.Size([1, 15])
+generate idx_cond: torch.Size([1, 15])
+generate logits1: torch.Size([1, 15, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-142.6607])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[2453]])
+
+generate i: 12
+generate idx: torch.Size([1, 16])
+generate idx_cond: torch.Size([1, 16])
+generate logits1: torch.Size([1, 16, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-107.0751])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[534]])
+
+generate i: 13
+generate idx: torch.Size([1, 17])
+generate idx_cond: torch.Size([1, 17])
+generate logits1: torch.Size([1, 17, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-118.9789])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[2761]])
+
+generate i: 14
+generate idx: torch.Size([1, 18])
+generate idx_cond: torch.Size([1, 18])
+generate logits1: torch.Size([1, 18, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-112.0261])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[416]])
+
+generate i: 15
+generate idx: torch.Size([1, 19])
+generate idx_cond: torch.Size([1, 19])
+generate logits1: torch.Size([1, 19, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-124.3666])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[2111]])
+
+generate i: 16
+generate idx: torch.Size([1, 20])
+generate idx_cond: torch.Size([1, 20])
+generate logits1: torch.Size([1, 20, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-47.4673])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[284]])
+
+generate i: 17
+generate idx: torch.Size([1, 21])
+generate idx_cond: torch.Size([1, 21])
+generate logits1: torch.Size([1, 21, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-153.0382])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[21210]])
+
+generate i: 18
+generate idx: torch.Size([1, 22])
+generate idx_cond: torch.Size([1, 22])
+generate logits1: torch.Size([1, 22, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-82.9265])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[606]])
+
+generate i: 19
+generate idx: torch.Size([1, 23])
+generate idx_cond: torch.Size([1, 23])
+generate logits1: torch.Size([1, 23, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-86.9916])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[11]])
+
+generate i: 20
+generate idx: torch.Size([1, 24])
+generate idx_cond: torch.Size([1, 24])
+generate logits1: torch.Size([1, 24, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-113.5787])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[780]])
+
+generate i: 21
+generate idx: torch.Size([1, 25])
+generate idx_cond: torch.Size([1, 25])
+generate logits1: torch.Size([1, 25, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-144.0747])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[326]])
+
+generate i: 22
+generate idx: torch.Size([1, 26])
+generate idx_cond: torch.Size([1, 26])
+generate logits1: torch.Size([1, 26, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-109.2713])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[561]])
+
+generate i: 23
+generate idx: torch.Size([1, 27])
+generate idx_cond: torch.Size([1, 27])
+generate logits1: torch.Size([1, 27, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-133.1093])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[307]])
+
+generate i: 24
+generate idx: torch.Size([1, 28])
+generate idx_cond: torch.Size([1, 28])
+generate logits1: torch.Size([1, 28, 50257])
+generate logits2: torch.Size([1, 50257])
+generate top_logits: torch.Size([1, 50])
+generate min_val: tensor([-118.1486])
+generate logits3: torch.Size([1, 50257])
+generate logits4: torch.Size([1, 50257])
+generate logits5: tensor([[0.]])
+generate logits6: torch.Size([1, 50257])
+generate probs: torch.Size([1, 50257])
+generate idx_next: tensor([[19538]])
+Output text:
+ Every effort moves you toward finding an ideal life. You don't have to accept your problems by trying to remedy them, because that would be foolish
+$
+"""
