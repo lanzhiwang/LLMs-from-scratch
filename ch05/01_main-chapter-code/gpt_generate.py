@@ -40,9 +40,13 @@ def download_and_load_gpt2(model_size, models_dir):
     model_dir = os.path.join(models_dir, model_size)
     base_url = "https://openaipublic.blob.core.windows.net/gpt-2/models"
     filenames = [
-        "checkpoint", "encoder.json", "hparams.json",
-        "model.ckpt.data-00000-of-00001", "model.ckpt.index",
-        "model.ckpt.meta", "vocab.bpe"
+        "checkpoint",
+        "encoder.json",
+        "hparams.json",
+        "model.ckpt.data-00000-of-00001",
+        "model.ckpt.index",
+        "model.ckpt.meta",
+        "vocab.bpe",
     ]
 
     # Download files
@@ -108,7 +112,9 @@ def download_file(url, destination):
 
         # Initialize the progress bar with total file size
         progress_bar_description = os.path.basename(url)  # Extract filename from URL
-        with tqdm(total=file_size, unit="iB", unit_scale=True, desc=progress_bar_description) as progress_bar:
+        with tqdm(
+            total=file_size, unit="iB", unit_scale=True, desc=progress_bar_description
+        ) as progress_bar:
             # Open the destination file in binary write mode
             with open(destination, "wb") as file:
                 # Read the file in chunks and write to destination
@@ -161,62 +167,75 @@ def load_weights_into_gpt(gpt, params):
 
     for b in range(len(params["blocks"])):
         q_w, k_w, v_w = np.split(
-            (params["blocks"][b]["attn"]["c_attn"])["w"], 3, axis=-1)
+            (params["blocks"][b]["attn"]["c_attn"])["w"], 3, axis=-1
+        )
         gpt.trf_blocks[b].att.W_query.weight = assign(
-            gpt.trf_blocks[b].att.W_query.weight, q_w.T)
+            gpt.trf_blocks[b].att.W_query.weight, q_w.T
+        )
         gpt.trf_blocks[b].att.W_key.weight = assign(
-            gpt.trf_blocks[b].att.W_key.weight, k_w.T)
+            gpt.trf_blocks[b].att.W_key.weight, k_w.T
+        )
         gpt.trf_blocks[b].att.W_value.weight = assign(
-            gpt.trf_blocks[b].att.W_value.weight, v_w.T)
+            gpt.trf_blocks[b].att.W_value.weight, v_w.T
+        )
 
         q_b, k_b, v_b = np.split(
-            (params["blocks"][b]["attn"]["c_attn"])["b"], 3, axis=-1)
+            (params["blocks"][b]["attn"]["c_attn"])["b"], 3, axis=-1
+        )
         gpt.trf_blocks[b].att.W_query.bias = assign(
-            gpt.trf_blocks[b].att.W_query.bias, q_b)
-        gpt.trf_blocks[b].att.W_key.bias = assign(
-            gpt.trf_blocks[b].att.W_key.bias, k_b)
+            gpt.trf_blocks[b].att.W_query.bias, q_b
+        )
+        gpt.trf_blocks[b].att.W_key.bias = assign(gpt.trf_blocks[b].att.W_key.bias, k_b)
         gpt.trf_blocks[b].att.W_value.bias = assign(
-            gpt.trf_blocks[b].att.W_value.bias, v_b)
+            gpt.trf_blocks[b].att.W_value.bias, v_b
+        )
 
         gpt.trf_blocks[b].att.out_proj.weight = assign(
             gpt.trf_blocks[b].att.out_proj.weight,
-            params["blocks"][b]["attn"]["c_proj"]["w"].T)
+            params["blocks"][b]["attn"]["c_proj"]["w"].T,
+        )
         gpt.trf_blocks[b].att.out_proj.bias = assign(
             gpt.trf_blocks[b].att.out_proj.bias,
-            params["blocks"][b]["attn"]["c_proj"]["b"])
+            params["blocks"][b]["attn"]["c_proj"]["b"],
+        )
 
         gpt.trf_blocks[b].ff.layers[0].weight = assign(
             gpt.trf_blocks[b].ff.layers[0].weight,
-            params["blocks"][b]["mlp"]["c_fc"]["w"].T)
+            params["blocks"][b]["mlp"]["c_fc"]["w"].T,
+        )
         gpt.trf_blocks[b].ff.layers[0].bias = assign(
-            gpt.trf_blocks[b].ff.layers[0].bias,
-            params["blocks"][b]["mlp"]["c_fc"]["b"])
+            gpt.trf_blocks[b].ff.layers[0].bias, params["blocks"][b]["mlp"]["c_fc"]["b"]
+        )
         gpt.trf_blocks[b].ff.layers[2].weight = assign(
             gpt.trf_blocks[b].ff.layers[2].weight,
-            params["blocks"][b]["mlp"]["c_proj"]["w"].T)
+            params["blocks"][b]["mlp"]["c_proj"]["w"].T,
+        )
         gpt.trf_blocks[b].ff.layers[2].bias = assign(
             gpt.trf_blocks[b].ff.layers[2].bias,
-            params["blocks"][b]["mlp"]["c_proj"]["b"])
+            params["blocks"][b]["mlp"]["c_proj"]["b"],
+        )
 
         gpt.trf_blocks[b].norm1.scale = assign(
-            gpt.trf_blocks[b].norm1.scale,
-            params["blocks"][b]["ln_1"]["g"])
+            gpt.trf_blocks[b].norm1.scale, params["blocks"][b]["ln_1"]["g"]
+        )
         gpt.trf_blocks[b].norm1.shift = assign(
-            gpt.trf_blocks[b].norm1.shift,
-            params["blocks"][b]["ln_1"]["b"])
+            gpt.trf_blocks[b].norm1.shift, params["blocks"][b]["ln_1"]["b"]
+        )
         gpt.trf_blocks[b].norm2.scale = assign(
-            gpt.trf_blocks[b].norm2.scale,
-            params["blocks"][b]["ln_2"]["g"])
+            gpt.trf_blocks[b].norm2.scale, params["blocks"][b]["ln_2"]["g"]
+        )
         gpt.trf_blocks[b].norm2.shift = assign(
-            gpt.trf_blocks[b].norm2.shift,
-            params["blocks"][b]["ln_2"]["b"])
+            gpt.trf_blocks[b].norm2.shift, params["blocks"][b]["ln_2"]["b"]
+        )
 
     gpt.final_norm.scale = assign(gpt.final_norm.scale, params["g"])
     gpt.final_norm.shift = assign(gpt.final_norm.shift, params["b"])
     gpt.out_head.weight = assign(gpt.out_head.weight, params["wte"])
 
 
-def generate(model, idx, max_new_tokens, context_size, temperature=0.0, top_k=None, eos_id=None):
+def generate(
+    model, idx, max_new_tokens, context_size, temperature=0.0, top_k=None, eos_id=None
+):
 
     # For-loop is the same as before: Get logits, and only focus on last time step
     for _ in range(max_new_tokens):
@@ -230,7 +249,9 @@ def generate(model, idx, max_new_tokens, context_size, temperature=0.0, top_k=No
             # Keep only top_k values
             top_logits, _ = torch.topk(logits, top_k)
             min_val = top_logits[:, -1]
-            logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
+            logits = torch.where(
+                logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits
+            )
 
         # New: Apply temperature scaling
         if temperature > 0.0:
@@ -250,7 +271,9 @@ def generate(model, idx, max_new_tokens, context_size, temperature=0.0, top_k=No
         else:
             idx_next = torch.argmax(logits, dim=-1, keepdim=True)  # (batch_size, 1)
 
-        if idx_next == eos_id:  # Stop generating early if end-of-sequence token is encountered and eos_id is specified
+        if (
+            idx_next == eos_id
+        ):  # Stop generating early if end-of-sequence token is encountered and eos_id is specified
             break
 
         # Same as before: append sampled index to the running sequence
@@ -277,7 +300,7 @@ def main(gpt_config, input_prompt, model_size, device):
         max_new_tokens=25,
         context_size=gpt_config["context_length"],
         top_k=50,
-        temperature=1.0
+        temperature=1.0,
     )
 
     print("Output text:\n", token_ids_to_text(token_ids, tokenizer))
@@ -285,20 +308,21 @@ def main(gpt_config, input_prompt, model_size, device):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Generate text with a pretrained GPT-2 model.")
+    parser = argparse.ArgumentParser(
+        description="Generate text with a pretrained GPT-2 model."
+    )
     parser.add_argument(
         "--prompt",
         default="Every effort moves you",
-        help="Prompt text used to seed the generation (default matches the script's built-in prompt)."
+        help="Prompt text used to seed the generation (default matches the script's built-in prompt).",
     )
     parser.add_argument(
         "--device",
         default="cpu",
-        help="Device for running inference, e.g., cpu, cuda, mps, or auto. Defaults to cpu."
+        help="Device for running inference, e.g., cpu, cuda, mps, or auto. Defaults to cpu.",
     )
 
     args = parser.parse_args()
-
 
     torch.manual_seed(123)
 
@@ -309,12 +333,11 @@ if __name__ == "__main__":
     print("PyTorch:", torch.__version__)
     print("Device:", DEVICE)
 
-
     BASE_CONFIG = {
-        "vocab_size": 50257,     # Vocabulary size
+        "vocab_size": 50257,  # Vocabulary size
         "context_length": 1024,  # Context length
-        "drop_rate": 0.0,        # Dropout rate
-        "qkv_bias": True         # Query-key-value bias
+        "drop_rate": 0.0,  # Dropout rate
+        "qkv_bias": True,  # Query-key-value bias
     }
 
     model_configs = {

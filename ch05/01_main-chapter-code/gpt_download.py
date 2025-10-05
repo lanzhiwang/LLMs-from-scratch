@@ -25,9 +25,13 @@ def download_and_load_gpt2(model_size, models_dir):
     base_url = "https://openaipublic.blob.core.windows.net/gpt-2/models"
     backup_base_url = "https://f001.backblazeb2.com/file/LLMs-from-scratch/gpt2"
     filenames = [
-        "checkpoint", "encoder.json", "hparams.json",
-        "model.ckpt.data-00000-of-00001", "model.ckpt.index",
-        "model.ckpt.meta", "vocab.bpe"
+        "checkpoint",
+        "encoder.json",
+        "hparams.json",
+        "model.ckpt.data-00000-of-00001",
+        "model.ckpt.index",
+        "model.ckpt.meta",
+        "vocab.bpe",
     ]
 
     # Download files
@@ -40,7 +44,9 @@ def download_and_load_gpt2(model_size, models_dir):
 
     # Load settings and params
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
-    settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
+    settings = json.load(
+        open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8")
+    )
     params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
 
     return settings, params
@@ -63,7 +69,12 @@ def download_file(url, destination, backup_url=None):
 
             # Initialize the progress bar with total file size
             progress_bar_description = os.path.basename(download_url)
-            with tqdm(total=file_size, unit="iB", unit_scale=True, desc=progress_bar_description) as progress_bar:
+            with tqdm(
+                total=file_size,
+                unit="iB",
+                unit_scale=True,
+                desc=progress_bar_description,
+            ) as progress_bar:
                 with open(destination, "wb") as file:
                     while True:
                         chunk = response.read(block_size)

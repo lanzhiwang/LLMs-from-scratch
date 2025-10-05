@@ -16,11 +16,11 @@ def gpt_config():
     return {
         "vocab_size": 50257,
         "context_length": 12,  # small for testing efficiency
-        "emb_dim": 32,         # small for testing efficiency
-        "n_heads": 4,          # small for testing efficiency
-        "n_layers": 2,         # small for testing efficiency
+        "emb_dim": 32,  # small for testing efficiency
+        "n_heads": 4,  # small for testing efficiency
+        "n_layers": 2,  # small for testing efficiency
         "drop_rate": 0.1,
-        "qkv_bias": False
+        "qkv_bias": False,
     }
 
 
@@ -28,9 +28,9 @@ def gpt_config():
 def other_settings():
     return {
         "learning_rate": 5e-4,
-        "num_epochs": 1,    # small for testing efficiency
+        "num_epochs": 1,  # small for testing efficiency
         "batch_size": 2,
-        "weight_decay": 0.1
+        "weight_decay": 0.1,
     }
 
 
@@ -73,7 +73,7 @@ def test_model_files():
             "model.ckpt.data-00000-of-00001": 497759232,
             "model.ckpt.index": 5215,
             "model.ckpt.meta": 471155,
-            "vocab.bpe": 456318
+            "vocab.bpe": 456318,
         }
 
         for file_name, expected_size in files.items():
@@ -89,7 +89,7 @@ def test_model_files():
             "model.ckpt.data-00000-of-00001": 1419292672,
             "model.ckpt.index": 10399,
             "model.ckpt.meta": 926519,
-            "vocab.bpe": 456318
+            "vocab.bpe": 456318,
         }
 
         for file_name, expected_size in files.items():
@@ -97,5 +97,9 @@ def test_model_files():
             valid, message = check_file_size(url, expected_size)
             assert valid, message
 
-    check_model_files(base_url="https://openaipublic.blob.core.windows.net/gpt-2/models")
-    check_model_files(base_url="https://f001.backblazeb2.com/file/LLMs-from-scratch/gpt2")
+    check_model_files(
+        base_url="https://openaipublic.blob.core.windows.net/gpt-2/models"
+    )
+    check_model_files(
+        base_url="https://f001.backblazeb2.com/file/LLMs-from-scratch/gpt2"
+    )
